@@ -8,6 +8,7 @@ using System.Collections;
 public class GenerationManager : MonoBehaviour
 {
     RandomRoomPlacer2D _roomGenerator2D;
+    GenerationData2D _generationData2D;
     TriangulationManager _triangulationManager;
     LineRenderer _lineRenderer;
     AnimateEdges _animEdges;
@@ -37,13 +38,16 @@ public class GenerationManager : MonoBehaviour
     {
         _roomGenerator2D.Generate();
         Debug.Log($"Room Count:{_roomGenerator2D.rooms.Count}");
+        _generationData2D = _roomGenerator2D.generationData;
     }
     
     [Button(enabledMode: EButtonEnableMode.Playmode)]
-    void CheckForOverlap()
+    void CheckForOverlapMTV()
     {
-        if (!_roomGenerator2D.CheckOverlapping())
-            return;
+        foreach(Room room in _roomGenerator2D.rooms)
+            room.MTVCollisionCheck();
+        //if (!_roomGenerator2D.CheckOverlapping())
+        //    return;
         //else
         //    CheckForOverlap();
     }
@@ -51,19 +55,20 @@ public class GenerationManager : MonoBehaviour
     [Button(enabledMode: EButtonEnableMode.Playmode)]
     void CreateMSP()
     {
-        int roomCount = _roomGenerator2D.generationData.rooms.Count;
-        var locations = _roomGenerator2D.generationData.locations;
+        int roomCount = _generationData2D.rooms.Count;
+        var locations = _generationData2D.locations;
 
         var sortedEdges = MinimumSpanningTree.BuildAndSortEdges(roomCount, (a, b) => Vector3.Distance(locations[a], locations[b]));
         var krukalMSP = MinimumSpanningTree.KruskalsMSP(roomCount, sortedEdges);
         _MSP = krukalMSP;
-        //foreach (Edge edges in krukalMSP)
-        //    Debug.DrawLine(locations[edges.A], locations[edges.B], Color.blue, 100f, false);
+
+        foreach (Edge edges in krukalMSP)
+            Debug.DrawLine(locations[edges.A], locations[edges.B], Color.blue, 100f, false);
 
         foreach (Edge edges in sortedEdges)
-            Debug.DrawLine(locations[edges.A], locations[edges.B], new Color(1f, 1f, 1f, 0.1f), 20f);
+            Debug.DrawLine(locations[edges.A], locations[edges.B], new Color(1f, 1f, 1f, 0.1f), 5f);
         //StartCoroutine(AnimateMSP(krukalMSP));
-        StartCoroutine(_animEdges.AnimateMSP(krukalMSP, locations));
+        //StartCoroutine(_animEdges.AnimateMSP(krukalMSP, locations));
     }
 
     [Button(enabledMode: EButtonEnableMode.Playmode)]
@@ -71,24 +76,24 @@ public class GenerationManager : MonoBehaviour
     {
         if(_coroutine !=  null)
         {
-            _coroutine = StartCoroutine(_animEdges.AnimateMSP(_MSP, _roomGenerator2D.generationData.locations));
+            _coroutine = StartCoroutine(_animEdges.AnimateMSP(_MSP, _generationData2D.locations));
         }
         else
         {
             StopCoroutine(_coroutine);
-            _coroutine = StartCoroutine(_animEdges.AnimateMSP(_MSP, _roomGenerator2D.generationData.locations));
+            _coroutine = StartCoroutine(_animEdges.AnimateMSP(_MSP, _generationData2D.locations));
         }
     }
 
     [Button(enabledMode: EButtonEnableMode.Playmode)]
     void ResetGeneration()
     {
-        _roomGenerator2D.ResetGen();
+        _roomGenerator2D.Regen();
     }
 
     IEnumerator LineRendererAnimateMSP(List<Edge> MSP)
     {
-        var locations = _roomGenerator2D.generationData.locations;
+        var locations = _generationData2D.locations;
         int positionCount = 2;
         _lineRenderer.positionCount = positionCount;
         _lineRenderer.SetPosition(0, locations[0]);

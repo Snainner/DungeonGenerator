@@ -3,6 +3,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using Unity.VisualScripting;
+using UnityEditorInternal;
 using UnityEngine;
 using Random = System.Random;
 public struct GenerationData2D
@@ -10,7 +11,14 @@ public struct GenerationData2D
     public List<Room> rooms;
     public List<GameObject> gameObjects;
     public List<Vector3> locations;
-    public List<Edge> edges;
+    //public List<Edge> edges;
+
+    public GenerationData2D(List<Room> rooms, List<GameObject> gameObjects,  List<Vector3> locations)
+    {
+        this.rooms = rooms;
+        this.gameObjects = gameObjects;
+        this.locations = locations;
+    }
 }
 public class RoomData
 {
@@ -27,6 +35,7 @@ public class RoomData
                  (a.bounds.position.y >= (b.bounds.position.y + b.bounds.size.y)) ||
                  (b.bounds.position.y >= (a.bounds.position.y + a.bounds.size.y)));
     }
+    
 }
 public class RandomRoomPlacer2D : MonoBehaviour
 {
@@ -52,21 +61,8 @@ public class RandomRoomPlacer2D : MonoBehaviour
     public List<GameObject> roomObjects = new List<GameObject>();
     public List<Room> rooms = new List<Room>();
     public List<Vector3> roomLocations = new List<Vector3>();   
-    public GenerationData2D generationData;
-    //private void Start()
-    //{
-    //    Generate();
-    //}
-    public void ResetGen()
-    {
-        foreach (GameObject go in roomObjects)
-            Destroy(go);
-        roomObjects.Clear();
-        rooms.Clear();
-        roomLocations.Clear();
-        generationData = new GenerationData2D();
+    public GenerationData2D generationData { private set;  get; }
 
-    }
     public void Regen()
     {
         //Clear existing cubes 
@@ -96,6 +92,9 @@ public class RandomRoomPlacer2D : MonoBehaviour
             roomsData.Clear();
             roomObjects.ForEach(obj => Destroy(obj));
             roomObjects.Clear();
+            roomLocations.Clear();
+            rooms.Clear();
+            generationData = new GenerationData2D();
         }
     }
     void PlaceRooms()
@@ -122,6 +121,8 @@ public class RandomRoomPlacer2D : MonoBehaviour
             {
                 if (RoomData.Intersects(room, buffer))
                 {
+                    
+                    //Show ghost object for a second to visualize the attempt
                     Debug.Log("<color=red><b>Generator:</b></color> Intersection detected");
                     add = false;
                     break;
@@ -153,89 +154,43 @@ public class RandomRoomPlacer2D : MonoBehaviour
         }
 
     }
-    public bool CheckOverlapping()
+    public void CheckOverlapping()
     {
-        //bool anyOverlap = RoomValidator.PushRoomsApart(roomObjects.ConvertAll(obj => obj.GetComponent<Room>()));
-        //bool anyOverlap;
-        //int iterations = 0;
-        //int maxIterations = 100;
-
-        //do
-        //{
-        //    anyOverlap = RoomValidator.PushRoomsApart(rooms);
-        //    iterations++;
-        //}
-        //while (anyOverlap && iterations < maxIterations);
-
-        //if(!a)
-        //{
-        //    foreach (GameObject room in roomObjects)
-        //        roomLocations.Add(room.transform.position);
-
-        //    generationData = new GenerationData2D
-        //    {
-        //        rooms = rooms,
-        //        gameObjects = roomObjects,
-        //        locations = roomLocations
-        //    };
-        //}
-        //return anyOverlap;
-
-        bool anyOverlap = RoomValidator.PushRoomsApart(rooms);
-        if (anyOverlap)
+        int maxIterations = 100;
+        for(int i = 0; i < maxIterations; i++)
         {
-            Debug.Log("<color=red><b>Generator:</b></color> Overlaps detected and pushed apart");
-            return anyOverlap;
-        }
-        else
-        {
-            Debug.Log("<color=green><b>Generator:</b></color> No overlaps detected");
-            //Create generation data struct to pass to the triangulation manager
-            //int actualRoomCount = rooms.Count;
-            //Store all room positions for later retrieval 
-            foreach (GameObject room in roomObjects)
-                roomLocations.Add(room.transform.position);
-
-            generationData = new GenerationData2D
+            if (!RoomValidator.PushRoomsApart(rooms, 2f))
             {
-                rooms = rooms,
-                gameObjects = roomObjects,
-                locations = roomLocations
-            };
-
-            return anyOverlap;
+                generationData = new GenerationData2D { gameObjects = roomObjects, locations = roomLocations, rooms = rooms };
+                Debug.Log($"<color=green><b>Generator:</b></color> No overlaps detected in {i} passes");
+                break;
+            }
         }
-
     }
-    void PlaceCube(Vector2Int location, Vector2Int size, Material material)
+
+    GameObject PlaceCube(Vector2Int location, Vector2Int size, Material material)
     {
         //Centre the cube's pivot point at the center of the room by offsetting the position by half the size of the cube
-        Vector3 centre = new Vector3(location.x + size.x / 2f, 0, location.y + size.y / 2f);
-
+        //Vector3 centre = new Vector3(location.x + size.x / 2f, 0, location.y + size.y / 2f);
 
         GameObject gameObject = Instantiate(cubePrefab, new Vector3(location.x, 0, location.y), Quaternion.identity);
         gameObject.transform.localScale = new Vector3(size.x, 1, size.y);
         gameObject.GetComponent<MeshRenderer>().material = material;
-        
-        //roomLocations.Add(gameObject.transform.position);
 
-        Room roomComponent = gameObject.AddComponent<Room>();
+        return gameObject;
+    }
+    void PlaceRoom (Vector2Int location, Vector2Int roomSize)
+    {
+        GameObject roomGo = PlaceCube(location, roomSize, redMaterial);
+        Room roomComponent = roomGo.AddComponent<Room>();
         int roomIndex = roomObjects.Count + 1;
         roomComponent._Index = roomIndex;
-        gameObject.name = $"room_{roomIndex}";
+        roomComponent.Init(new Vector3(roomSize.x, 1, roomSize.y));
+        roomGo.name = $"room_{roomIndex}";
+        roomGo.layer = LayerMask.NameToLayer("Room");
         
         rooms.Add(roomComponent);
         roomObjects.Add(gameObject);
     }
-    void PlaceRoom (Vector2Int location, Vector2Int roomSize)
-    {
-        PlaceCube(location, roomSize, redMaterial);
-    }
-
-    public float LookUpDistance(int a, int b)
-    {
-        return Vector3.Distance(roomLocations[a], roomLocations[b]); 
-    }
-
 
 }

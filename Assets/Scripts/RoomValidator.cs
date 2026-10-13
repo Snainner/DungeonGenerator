@@ -10,55 +10,44 @@ public static class RoomValidator
     /// </summary>
     public static bool PushRoomsApart(List<Room> rooms, float pushDistance = 1f)
     {
-        bool anyOverlap = false;
         List<(Room a, Room b)> overlaps = FindOverlaps(rooms);
-        List<Room> flatOverlapList = new List<Room>();
+        if(overlaps.Count ==  0) return false;
+
         foreach (var overlap in overlaps)
         {
-
-
-            anyOverlap = true;
             Vector3 direction = (overlap.b.transform.position - overlap.a.transform.position).normalized;
             overlap.a.transform.position -= direction * pushDistance;
             overlap.b.transform.position += direction * pushDistance;
-
-            //flatOverlapList.Add(overlap.a);
-            //flatOverlapList.Add(overlap.b);
-            //int overlapCheckCount = flatOverlapList.Count();
-            //if (overlapCheckCount > 1)
-            //{
-            //    PushRoomsApart(flatOverlapList, pushDistance);
-            //}
-
         }
-        return anyOverlap;
+        return true;
     }
-
     static List<(Room a, Room b)> FindOverlaps(List<Room> rooms)
     {
         List<(Room, Room)> overlaps = new List<(Room, Room)>();
 
         //Sort rooms from left to right based on their x position
 
-        rooms.Sort((a, b) => a.transform.position.x.CompareTo(b.transform.position.x));
+        //rooms.Sort((a, b) => a.transform.position.x.CompareTo(b.transform.position.x));
+        var entries = rooms.Select(r => (room: r, bounds: r.Bounds)).OrderBy(e=> e.bounds.min.x).ToList();
 
         for (int i = 0; i < rooms.Count; i++)
         {
-            Bounds a = rooms[i].Bounds;
+            Bounds a = entries[i].bounds;
 
-            for (int j = i + 1; j < rooms.Count; j++)
+            for (int j = i + 1; j < entries.Count; j++)
             {
                 //B starts at or after A's right edge, so we can break the loop early as the rooms are sorted by x position and no further rooms can overlap with A
-                Bounds b = rooms[j].Bounds;
+                Bounds b = entries[j].bounds;
                 if(b.min.x >= a.max.x)
                 {
                     // Since the rooms are sorted, we can break early
+                    Debug.Log("Broke the loop early");
                     break;
                 }
                 if(a.Intersects(b))
                 {
-                    overlaps.Add((rooms[i], rooms[j]));
-                    Debug.Log($"Overlap found between {rooms[i].name} and {rooms[j].name}");
+                    overlaps.Add((entries[i].room, entries[j].room));
+                    Debug.Log($"Overlap found between {entries[i].room.name} and {entries[j].room.name}");
                 }
             }
         }
