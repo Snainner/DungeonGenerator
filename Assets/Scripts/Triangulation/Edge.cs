@@ -2,6 +2,7 @@ using UnityEngine;
 
 public struct Edge
 {
+    //Mirrored index from point list
     public int A, B;
     public float Distance;
     public Edge(int a, int b, float distance)

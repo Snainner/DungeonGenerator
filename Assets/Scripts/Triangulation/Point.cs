@@ -1,16 +1,11 @@
 using UnityEngine;
 
-public class Point : MonoBehaviour
+public struct Point
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
+    public Vector3 Location;
 
-    // Update is called once per frame
-    void Update()
+    public Point(Vector3 Location)
     {
-        
+        this.Location = Location;
     }
 }

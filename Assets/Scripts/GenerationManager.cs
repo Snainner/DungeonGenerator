@@ -41,7 +41,7 @@ public class GenerationManager : MonoBehaviour
         _generationData2D = _roomGenerator2D.generationData;
     }
     
-    [Button(enabledMode: EButtonEnableMode.Playmode)]
+    //[Button(enabledMode: EButtonEnableMode.Playmode)]
     void CheckForOverlapMTV()
     {
         foreach(Room room in _roomGenerator2D.rooms)

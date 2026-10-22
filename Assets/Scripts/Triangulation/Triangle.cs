@@ -1,7 +1,20 @@
 //using NUnit.Framework;
 //using System.Collections.Generic;
-//using UnityEngine;
+using UnityEngine;
+using UnityEngine.TerrainTools;
+public struct Triangle
+{
+    public Point PointA;
+    public Point PointB;
+    public Point PointC;
 
+    public Triangle(Point a, Point b, Point c)
+    {
+        PointA = a;
+        PointB = b;
+        PointC = c;
+    }
+}
 //public class Triangle
 //{
 //    public Vector2 _PointA, _PointB, _PointC;

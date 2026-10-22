@@ -2,7 +2,9 @@ using NaughtyAttributes;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.VisualScripting;
+using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
 using Random = System.Random;
@@ -62,7 +64,10 @@ public class RandomRoomPlacer2D : MonoBehaviour
     public List<Room> rooms = new List<Room>();
     public List<Vector3> roomLocations = new List<Vector3>();   
     public GenerationData2D generationData { private set;  get; }
+    Triangle superTriangle;
+    bool drawSuperTriangle = false;
 
+    Transform roomsParent;
     public void Regen()
     {
         //Clear existing cubes 
@@ -75,26 +80,41 @@ public class RandomRoomPlacer2D : MonoBehaviour
 
     public void Generate()
     {
+        if(roomsParent == null)
+        {
+            roomsParent = Instantiate(new GameObject(name = "Rooms")).transform;
+        }
+
         random = new Random();
         grid = new Grid2D<CellType>(gridSize, Vector2Int.zero); 
         roomsData = new List<RoomData>();
 
         PlaceRooms();
         CheckOverlapping();
-
+        CreateSuperTriangle();
         //if(roomsData.Count > 0) 
         //    Regen();
+    }
+
+    void CreateSuperTriangle()
+    {
+        superTriangle = BowyerWatson.SuperTriangle(roomLocations);
+        drawSuperTriangle = true;
+        Debug.Log($"SuperTriangle Points: <br>A: {superTriangle.PointA.Location} <br>B: {superTriangle.PointB.Location} <br>C: {superTriangle.PointA.Location}");
     }
     void ClearDungeon()
     {
         if (roomsData != null && roomsData.Count > 0)
         {
             roomsData.Clear();
-            roomObjects.ForEach(obj => Destroy(obj));
+            //roomObjects.ForEach(obj => Destroy(obj.gameObject));
             roomObjects.Clear();
             roomLocations.Clear();
+
+            rooms.ForEach(e => e.DestroyRoom());
             rooms.Clear();
             generationData = new GenerationData2D();
+            drawSuperTriangle = false;
         }
     }
     void PlaceRooms()
@@ -152,8 +172,8 @@ public class RandomRoomPlacer2D : MonoBehaviour
 
             }
         }
-
     }
+
     public void CheckOverlapping()
     {
         int maxIterations = 100;
@@ -161,8 +181,9 @@ public class RandomRoomPlacer2D : MonoBehaviour
         {
             if (!RoomValidator.PushRoomsApart(rooms, 2f))
             {
+                roomLocations = rooms.Select(e => e.Bounds.center).ToList();
                 generationData = new GenerationData2D { gameObjects = roomObjects, locations = roomLocations, rooms = rooms };
-                Debug.Log($"<color=green><b>Generator:</b></color> No overlaps detected in {i} passes");
+                Debug.Log($"<color=green><b>Generator:</b></color> No overlaps detected in {i} passes <br>{roomLocations.Count} Room locations added");
                 break;
             }
         }
@@ -173,7 +194,7 @@ public class RandomRoomPlacer2D : MonoBehaviour
         //Centre the cube's pivot point at the center of the room by offsetting the position by half the size of the cube
         //Vector3 centre = new Vector3(location.x + size.x / 2f, 0, location.y + size.y / 2f);
 
-        GameObject gameObject = Instantiate(cubePrefab, new Vector3(location.x, 0, location.y), Quaternion.identity);
+        GameObject gameObject = Instantiate(cubePrefab, new Vector3(location.x, 0, location.y), Quaternion.identity, roomsParent);
         gameObject.transform.localScale = new Vector3(size.x, 1, size.y);
         gameObject.GetComponent<MeshRenderer>().material = material;
 
@@ -193,4 +214,25 @@ public class RandomRoomPlacer2D : MonoBehaviour
         roomObjects.Add(gameObject);
     }
 
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.yellowGreen;
+        if(drawSuperTriangle)
+        {
+            Handles.Label(superTriangle.PointA.Location, "A");
+            Handles.Label(superTriangle.PointB.Location, "B");
+            Handles.Label(superTriangle.PointC.Location, "C");
+
+            Gizmos.DrawLine(superTriangle.PointA.Location, superTriangle.PointB.Location);
+            Gizmos.DrawLine(superTriangle.PointB.Location, superTriangle.PointC.Location);
+            Gizmos.DrawLine(superTriangle.PointC.Location, superTriangle.PointA.Location);
+
+            Gizmos.color = Color.yellow;
+            foreach (var loc in roomLocations)
+                Gizmos.DrawSphere(loc, .5f);
+            Gizmos.color = Color.green;
+            foreach (var loc in generationData.locations)
+                Gizmos.DrawSphere(loc, .5f);
+        }
+    }
 }
