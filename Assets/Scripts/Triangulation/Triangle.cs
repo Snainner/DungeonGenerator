@@ -8,13 +8,90 @@ public struct Triangle
     public Point PointB;
     public Point PointC;
 
+    public Circumcircle Circumcircle;
+
     public Triangle(Point a, Point b, Point c)
     {
         PointA = a;
         PointB = b;
         PointC = c;
+        Circumcircle = TriangleHelper.CalculateCircumcircle(a.Location, b.Location, c.Location);
+    }
+
+
+}
+
+public struct VTriangle
+{
+    public Vector3 A;
+    public Vector3 B;
+    public Vector3 C;
+
+    public Circumcircle circumcircle;
+    public VTriangle(Vector3 a, Vector3 b, Vector3 c)
+    {
+        A = a;
+        B = b;
+        C = c;
+        circumcircle = TriangleHelper.CalculateCircumcircle(a, b,c);
     }
 }
+
+public struct Circumcircle
+{
+    public Vector3 Centre;
+    public float Radius;
+
+    public Circumcircle(Vector3 centre, float radius)
+    {
+        Centre = centre;
+        Radius = radius;
+    }
+}
+
+public static class TriangleHelper
+{
+    public static Circumcircle CalculateCircumcircle(Vector3 A, Vector3 B, Vector3 C)
+    {
+        Vector3 circumCenter = Vector3.zero;
+
+        Vector3 midpointAB = new Vector3(((A.x - B.x) / 2), 1, ((A.z - B.z) / 2));
+        Vector3 midpointAC = new Vector3(((A.x - C.x) / 2), 1, ((A.z - C.z) / 2));
+
+        float slopeAB = (B.z - A.z) / (B.x - A.x); //if the perpendicular bisector has a slope of -1/m the slope is perpendicular 
+        float slopeAC = (C.z - A.z) / (C.x - A.x);
+
+        if (slopeAB == 0.0f)
+        {
+            circumCenter.x = midpointAB.x;
+            float intercept = midpointAC.z - midpointAC.x * (-1 / slopeAC);
+            circumCenter.z = (-1 / slopeAC) * circumCenter.x + intercept;
+        }
+        else if (slopeAC == 0.0f)
+        {
+            circumCenter.x = midpointAC.x;
+            float intercept = midpointAB.z - midpointAC.x * (-1 / slopeAB);
+            circumCenter.y = (-1 / slopeAB) * circumCenter.x + intercept;
+        }
+        else
+        {
+            //z = m * x + q
+            float interceptAB = midpointAB.z + midpointAB.x / slopeAB;
+            float interceptAC = midpointAC.z + midpointAC.x / slopeAC;
+
+            circumCenter.x = (interceptAC - interceptAB) / (-1 / slopeAB + 1 / slopeAC);
+            circumCenter.z = circumCenter.x / slopeAB + interceptAB;
+        }
+
+        float circumRadius = (A - circumCenter).magnitude;
+        return new Circumcircle(circumCenter, circumRadius);
+    }
+    public static bool IsInCircumcircle(Vector3 point, Circumcircle circle)
+    {
+        return (point - circle.Centre).magnitude < circle.Radius;
+    }
+}
+
 //public class Triangle
 //{
 //    public Vector2 _PointA, _PointB, _PointC;
